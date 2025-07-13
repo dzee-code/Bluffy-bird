@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Pixel Flappy Adventure</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #87CEEB;
+            overflow: hidden; 
+            font-family: 'Press Start 2P', monospace;
+            image-rendering: pixelated;
+        }
+
+        canvas {
+            display: block;
+            margin: auto;
+            background:white;
+            background-size: cover;
+        }
+
+        #startMessage {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.7); 
+            color: #fff;
+            padding: 20px 40px;
+            font-size: 14px;
+            border-radius: 10px;
+            z-index: 10;
+            text-align: center;
+            font-family: monospace;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="startMessage">Click or press space to start</div>
+    <canvas id="gameCanvas" width="480" height="640"></canvas>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        let gameRunning = false;
+        let gravity = 0.5;
+        let velocity = 0;
+        let jump = -10;
+        let bird = {
+            x: 80,
+            y: 200,
+            width: 40,
+            height: 40,
+            sprite: new Image()
+        };
+        bird.sprite.src = "data:image/webp;base64,UklGRjAEAABXRUJQVlA4ICQEAADQJgCdASrAAMAAPp1OoUylpL+iI9WpE/ATiWVu4Wur6FGs+2fkzz9HMkF5xjzJ/o/Nl/t/5F/FPgB4lPSM8wH6S/qT78vSAf2P/AekV7KHoAfrB6T/7k/CB+43o3f/XOY/6B+IHa3/ADYSfwz/EDZV/hn+MHxh/Hfww/J2gs0Tz+n9wDyQPal/Pf5l/Gv3U/qfoI/oB1sAsDNKCnnrjNKCnnrjNKCnnrjNJ/fbrhr/yDwH2UiwWyZLo9cam1obrjZvEyKWQmu2/mdRCovjUOSeBksf6GgHudK0mhXLCHWZTqOLyvCFFpPzyMeQ7n1R3Ad37d2MaO1/crvmDSKvDSFPDgCJRufPcL1K1g+nEw8iKNhg0VMGj3pw2hAFbPRpFUqLB+0oKaadlRRiQ118g8Cov18g8Cov18g8Cov18g5gAP79z3AABhxVMpHiAM0EDgMhs4eGsZRf4RKL0GMc9C22MXTZ3Zh+lHS6hAoTdQ21Ds6/LwCZ+Ag+UFBtGKWDB+Tz9anBObjVAiFDZd+MW6Cq1ELwjTH/5Ed9JtgB8IW+bf2Cn4x3qP+xCdeCBsUZ2gQT7+iuOu0fc9XJr4HwX5o/1EP//Uhk1rfBUEVvJiTskFxLX2MUd5O92CFhPpwTPnJzejpmClZo0/nlBMeYZWs6yPMYxUnlExmV9D3NGFgv/pmjXD2PqMY8UvO0Fcr76QLQQtiItcDjL/kYPmrGU0meR/wAwNjXsg8anJDCy7DXRVqfEzS/j/XtuEjgJhvf4uvbIpQRXztKUm9jJNKz5Q5xS8Iqg0r+z/9CR5XF/oYx1GrhUXVJEDRSSesVI8yaqy1OLq+MEODYBfT4uaSvyW/xPRjnWnwlXkkgRYrVu74cQ9AQdaTLSgN/wIHxWLHv9v6V2l7+3LgcN+NGHed9AFBsKXvnFKG7ir5oVDaab6FmvfsoexH+8omuGBaU5GwbvfLPT4nFg0zyW8vW5Ax1oXS9PtAsZ6ZJnfhtr8gsa0ah3OTN9cn+xdkqsWuf10eNS1XnyIu8bDbPPxwYdEHmO5en8azx0MTHsfH6i1iltfPgXbFEJ8F/8iBT7KlPGSk3acr/JJo7z8mBSYi8GMLnyD5W8+RnPELoae7+45L5Df+h2uGLusn5n4g356X4VLNMfJTlXcqutVIkmmHzIgPJ+/gyg03EPbAAHJCPLS32ort0FaojC4VLzigeiuAnO35nsY88Nkh0BwaZ9RSoTLN5LTZtEn1Cku9zXj7T6wPnAnIUHSr6Pmhq0DRPoQdOBEaQS5Iki9exAgf+kNQm+JX6JmO4Ngn/g+x6lToRoVwZUdVZhe8s97XlN3ELqQkUDmgUg4e9W8CEHMY2D6UtDvx3JWxO5KMacxT1Q2/ycr+wV63u6omY5SWt/jFDbm0h9e22+QAAAAAA";
+
+        let pipes = [];
+        let score = 0;
+        let highScore = 0;
+
+        let gap = 160;
+        let pipeWidth = 60;
+
+        function resetGame() {
+            bird.y = 200;
+            velocity = 0;
+            pipes = [];
+            score = 0;
+            gameRunning = false;
+            document.getElementById("startMessage").style.display = "block";
+        }
+
+        function drawBird() {
+            ctx.drawImage(bird.sprite, bird.x, bird.y, bird.width, bird.height);
+        }
+
+        function createPipe() {
+            let pipeTopHeight = Math.floor(Math.random() * 200) + 50;
+            pipes.push({
+                x: canvas.width,
+                top: pipeTopHeight,
+                bottom: pipeTopHeight + gap
+            });
+        }
+
+        function drawPipes() {
+            ctx.fillStyle = "#228B22";
+            pipes.forEach(pipe => {
+                ctx.fillRect(pipe.x, 0, pipeWidth, pipe.top);
+                ctx.fillRect(pipe.x, pipe.bottom, pipeWidth, canvas.height - pipe.bottom);
+            });
+        }
+
+        function update() {
+            if (!gameRunning) return;
+
+            velocity += gravity;
+            bird.y += velocity;
+
+            if (bird.y + bird.height >= canvas.height) {
+                resetGame();
+            }
+
+            pipes.forEach(pipe => {
+                pipe.x -= 2;
+
+                // collision
+                if (
+                    bird.x + bird.width > pipe.x &&
+                    bird.x < pipe.x + pipeWidth &&
+                    (bird.y < pipe.top || bird.y + bird.height > pipe.bottom)
+                ) {
+                    resetGame();
+                }
+
+                // score
+                if (pipe.x + pipeWidth < bird.x && !pipe.passed) {
+                    score++;
+                    pipe.passed = true;
+                    if (score > highScore) highScore = score;
+                }
+            });
+
+            // Remove off-screen pipes
+            pipes = pipes.filter(pipe => pipe.x + pipeWidth > 0);
+
+            // Add new pipe
+            if (pipes.length === 0 || pipes[pipes.length - 1].x < canvas.width - 200) {
+                createPipe();
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawBird();
+            drawPipes();
+
+            // Score
+            ctx.fillStyle = "black";
+            ctx.font = "20px monospace";
+            ctx.fillText("Score: " + score, 10, 30);
+            ctx.fillText("High: " + highScore, 10, 60);
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function startGame() {
+            if (!gameRunning) {
+                gameRunning = true;
+                velocity = jump;
+                pipes = [];
+                score = 0;
+                createPipe();
+                document.getElementById("startMessage").style.display = "none";
+            } else {
+                velocity = jump;
+            }
+        }
+
+        document.addEventListener("keydown", (e) => {
+            if (e.code === "Space") startGame();
+        });
+
+        document.addEventListener("click", () => {
+            startGame();
+        });
+
+        bird.sprite.onload = () => {
+            resetGame();
+            gameLoop();
+        };
+    </script>
+</body>
+
+</html>
